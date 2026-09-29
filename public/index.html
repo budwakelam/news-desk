@@ -74,12 +74,45 @@ main{display:grid; grid-template-columns:minmax(0,1fr) 390px; gap:18px; padding:
 .error{color:#f0717a;}
 footer{padding:18px 22px 30px; color:var(--muted); font-size:12px; text-align:center; border-top:1px solid var(--border);}
 footer a{color:var(--accent2);}
+/* live wire */
+.wire-nav{display:flex; gap:18px;}
+.wire-nav a{color:var(--muted); text-decoration:none; font-size:13px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;}
+.wire-nav a:hover{color:var(--accent2);}
+.wire-section{max-width:1720px; margin:0 auto; padding:4px 22px 44px;}
+.wire-ticker{display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; margin-bottom:14px; cursor:pointer; min-width:0;}
+.wire-ticker:hover{border-color:var(--accent);}
+.tick-label{background:var(--accent); color:#fff; font-size:11px; font-weight:800; letter-spacing:1.5px; padding:4px 10px; border-radius:6px; white-space:nowrap;}
+#tick-text{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:opacity .35s;}
+#tick-text.fade{opacity:0;}
+.wire-panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+.wire-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; border-bottom:1px solid var(--border);}
+.wire-head h2{font-size:14px; letter-spacing:2px; font-weight:800; display:flex; align-items:center; gap:10px;}
+.wire-updated{margin-left:auto; color:var(--muted); font-size:12.5px;}
+.wire-btn{background:var(--chip); border:1px solid var(--border); color:var(--text); font-size:12px; font-weight:700; padding:6px 13px; border-radius:16px; cursor:pointer;}
+.wire-btn:hover{border-color:var(--accent2); color:var(--accent2);}
+.wire-filters{display:flex; gap:6px; flex-wrap:wrap; padding:10px 16px; border-bottom:1px solid var(--border); align-items:center;}
+.wire-filters button{background:var(--chip); border:1px solid var(--border); color:var(--muted); font-size:12px; padding:5px 12px; border-radius:16px; cursor:pointer;}
+.wire-filters button:hover{color:var(--text);}
+.wire-filters button.active{color:var(--text); border-color:var(--accent);}
+.wire-qpill{display:inline-flex; align-items:center; gap:8px; background:#241a10; border:1px solid #4a3517; color:#f0b429; font-size:12px; padding:5px 8px 5px 12px; border-radius:16px;}
+.wire-qpill button{background:none; border:0; color:#f0b429; font-size:14px; cursor:pointer; line-height:1;}
+.wire-list{max-height:600px; overflow-y:auto;}
+.wire-item{display:grid; grid-template-columns:70px 1fr; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border); text-decoration:none; color:var(--text);}
+.wire-item:hover{background:var(--panel2);}
+.wire-time{font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; padding-top:3px;}
+.wire-src{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:2px 9px; border-radius:10px; margin-bottom:5px; color:#0b0e14;}
+.wire-title{font-size:14px; font-weight:600; line-height:1.35;}
+.wire-desc{font-size:12.5px; color:var(--muted); margin-top:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.wire-item.fresh{animation:wireflash 3s ease-out;}
+@keyframes wireflash{0%{background:#2b2210}100%{background:transparent}}
+@media(max-width:700px){.wire-nav{display:none;} .wire-item{grid-template-columns:1fr;} .wire-time{display:none;}}
 @media(max-width:1080px){ main{grid-template-columns:1fr;} .sidebar{max-width:760px;} }
 </style>
 </head>
 <body>
 <header>
   <div class="brand"><div class="live-dot"></div><h1>NEWS<span>DESK</span></h1></div>
+  <nav class="wire-nav"><a href="#wire">Live Wire</a></nav>
   <div class="clock"><strong id="clock-time">--:--</strong><br><span id="clock-date"></span></div>
 </header>
 <main>
@@ -114,6 +147,22 @@ footer a{color:var(--accent2);}
     </div>
   </aside>
 </main>
+<section class="wire-section" id="wire">
+  <div class="wire-ticker" id="wire-ticker" title="Open this story">
+    <span class="tick-label">Latest</span>
+    <span id="tick-text">Connecting to the wire…</span>
+  </div>
+  <div class="wire-panel">
+    <div class="wire-head">
+      <h2><span class="live-dot"></span>Live Wire</h2>
+      <span class="wire-updated" id="wire-updated">Connecting…</span>
+      <button class="wire-btn" id="wire-refresh">Refresh</button>
+      <button class="wire-btn" id="wire-pause">Pause</button>
+    </div>
+    <div class="wire-filters" id="wire-filters"></div>
+    <div class="wire-list" id="wire-list"><div class="status">Pulling the latest headlines from a dozen outlets…</div></div>
+  </div>
+</section>
 <footer>Official embeds &amp; outbound links only. Streams play from each outlet's own YouTube channel. Clip/headline feeds load via public CORS relays.</footer>
 <script>
 "use strict";
@@ -385,12 +434,12 @@ function renderHeadlines(){
   });
 }
 function clearFilter(){
-  filterKw = '';
-  renderClips(); renderHeadlines();
+  filterKw = ''; wireQuery = '';
+  renderClips(); renderHeadlines(); renderWire();
 }
 function applyFilter(kw){
-  filterKw = kw.trim();
-  renderClips(); renderHeadlines();
+  filterKw = kw.trim(); wireQuery = filterKw;
+  renderClips(); renderHeadlines(); renderWire();
   const clipN = current && current.type==='youtube' && Array.isArray(clipsCache[current.channelId])
     ? clipsCache[current.channelId].filter(c=>matchKw(c.title,filterKw)).length : 0;
   const headN = headlinesLoaded ? headlinesCache.filter(h=>!h.error && matchKw(h.title+' '+(h.desc||''),filterKw)).length : 0;
@@ -459,6 +508,7 @@ function navHelp(){
     '· <b>play &lt;outlet&gt;</b> — e.g. \u201cplay Sky News\u201d, \u201cwatch DW\u201d<br>'+
     '· <b>latest from &lt;outlet&gt;</b> — play its newest clip, e.g. \u201clatest from Bloomberg\u201d<br>'+
     '· <b>filter &lt;keyword&gt;</b> — e.g. \u201cfilter Trump\u201d, \u201cfilter markets\u201d, \u201cfilter Canada news\u201d<br>'+
+    '· <b>wire</b> / <b>breaking</b> / <b>wire: &lt;keyword&gt;</b> — search the live text-news wire, e.g. \u201cwire markets\u201d<br>'+
     '· <b>clear</b> — remove the filter<br>'+
     '· <b>list</b> — show every channel<br>'+
     '· Just type an outlet name on its own to play it.');
@@ -471,7 +521,8 @@ function handleCommand(raw){
   let m;
   if (/^(help|\?|what can you do|commands)$/.test(l)) return navHelp();
   if (/^(list|channels|show channels|all channels)$/.test(l)) return listChannels();
-  if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); return navSay('bot','Filter cleared — showing everything again.'); }
+  if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); wireQuery=''; renderWire(); return navSay('bot','Filter cleared — showing everything again.'); }
+  if (m = l.match(/^(wire|breaking|live wire|latest news|latest headlines)(?:\s*:\s*([\s\S]*)|\s+([\s\S]*))?$/)) return wireSearch(m[2]||m[3]||'');
   if (m = l.match(/^(play|watch|switch(?:\s+to)?|open|tune(?:\s+to)?|put\s+on)\s+(.+)$/)) return channelAction(m[2]);
   if (m = l.match(/^(latest|newest)(?:\s+from|\s+clip\s+from)?\s+(.+)$/)) return latestClip(m[2]);
   if (m = l.match(/^(filter|search|find|show\s+me)\s+(.+)$/)) return applyFilter(m[2]);
@@ -480,7 +531,7 @@ function handleCommand(raw){
   return applyFilter(t);
 }
 function initNavigator(){
-  const chips = ['Play Sky News','Latest from Bloomberg','Filter: Trump','Filter: markets','Filter: Canada news','List channels'];
+  const chips = ['Play Sky News','Latest from Bloomberg','Breaking wire','Filter: Trump','Filter: markets','List channels'];
   const host = $('nav-chips'); host.innerHTML = '';
   chips.forEach(c => {
     const b = document.createElement('button');
@@ -491,7 +542,144 @@ function initNavigator(){
   const go = () => { const v = $('nav-text').value; $('nav-text').value=''; handleCommand(v); $('nav-text').focus(); };
   $('nav-go').onclick = go;
   $('nav-text').addEventListener('keydown', e => { if (e.key==='Enter') go(); });
-  navSay('bot','I\u2019m your on-page navigator — no cloud, no tracking. Ask me to <b>play</b> an outlet, play its <b>latest</b> clip, <b>filter</b> clips &amp; headlines, or say <b>help</b>.');
+  navSay('bot','I\u2019m your on-page navigator — no cloud, no tracking. Ask me to <b>play</b> an outlet, play its <b>latest</b> clip, <b>filter</b> clips &amp; headlines, search the <b>wire</b> (\u201cwire markets\u201d, \u201cbreaking\u201d), or say <b>help</b>.');
+}
+
+/* ---------- live wire: merged text-news stream (12 outlets, auto-refresh) ---------- */
+const WIRE_FEEDS = [
+  {name:'CBC', region:'Canada', url:'https://www.cbc.ca/cmlink/rss-topstories'},
+  {name:'Global News', region:'Canada', url:'https://globalnews.ca/feed/'},
+  {name:'NBC News', region:'United States', url:'https://feeds.nbcnews.com/nbcnews/public/news'},
+  {name:'CBS News', region:'United States', url:'https://www.cbsnews.com/latest/rss/main'},
+  {name:'ABC News', region:'United States', url:'https://abcnews.go.com/abcnews/topstories'},
+  {name:'BBC', region:'United Kingdom', url:'https://feeds.bbci.co.uk/news/world/rss.xml'},
+  {name:'Sky News', region:'United Kingdom', url:'https://feeds.skynews.com/feeds/rss/home.xml'},
+  {name:'DW', region:'Europe', url:'https://rss.dw.com/rdf/rss-en-all'},
+  {name:'France 24', region:'Europe', url:'https://www.france24.com/en/rss'},
+  {name:'Euronews', region:'Europe', url:'https://www.euronews.com/rss?level=theme&name=news'},
+  {name:'Al Jazeera', region:'Middle East', url:'https://www.aljazeera.com/xml/rss/all.xml'},
+  {name:'ABC Australia', region:'Asia Pacific', url:'https://www.abc.net.au/news/feed/51120/rss.xml'}
+];
+let wireItems = [], wireLoaded = false, wireRegion = 'All', wireQuery = '';
+let wirePaused = false, wireUpdatedAt = null, wireKnown = new Set(), tickTimer = null, tickIdx = 0;
+
+function srcHue(name){ let h=0; for (const c of String(name)) h=(h*31+c.charCodeAt(0))%360; return h; }
+
+function loadWire(){
+  if (wirePaused) return;
+  $('wire-updated').textContent = 'Refreshing…';
+  Promise.all(WIRE_FEEDS.map(f =>
+    fetchFeed(f.url, 'news')
+      .then(items => items.map(it => ({source:f.name, region:f.region, title:it.title, link:it.link, pub:it.pub, desc:it.desc})))
+      .catch(() => [])
+  )).then(groups => {
+    const merged = [].concat.apply([], groups).filter(x => x.title && x.link);
+    merged.sort((a,b) => b.pub - a.pub);
+    const seen = new Set(), fresh = [];
+    wireItems = merged.filter(x => {
+      if (seen.has(x.link)) return false;
+      seen.add(x.link);
+      if (!wireKnown.has(x.link)) fresh.push(x.link);
+      return true;
+    }).slice(0, 150);
+    fresh.forEach(l => wireKnown.add(l));
+    wireLoaded = true;
+    wireUpdatedAt = new Date();
+    renderWire(fresh);
+    startTicker();
+    tickUpdated();
+  }).catch(() => {
+    if (!wireLoaded) $('wire-list').innerHTML = '<div class="status error">Couldn\u2019t reach the news feeds. Check your connection and hit Refresh.</div>';
+    tickUpdated();
+  });
+}
+function tickUpdated(){
+  if (!wireUpdatedAt) return;
+  $('wire-updated').textContent = 'Updated '+relTime(wireUpdatedAt)+(wirePaused?' · paused':'')+' · '+WIRE_FEEDS.length+' outlets';
+}
+function wireFiltered(){
+  let list = wireItems;
+  if (wireRegion !== 'All') list = list.filter(x => x.region === wireRegion);
+  if (wireQuery) list = list.filter(x => matchKw(x.title+' '+(x.desc||''), wireQuery));
+  return list;
+}
+function renderWire(freshLinks){
+  freshLinks = freshLinks || [];
+  const fz = $('wire-filters');
+  const regions = ['All'].concat(CFG.regionOrder.filter(r => WIRE_FEEDS.some(f => f.region===r)));
+  fz.innerHTML = '';
+  regions.forEach(r => {
+    const b = document.createElement('button');
+    b.textContent = r; if (r===wireRegion) b.classList.add('active');
+    b.onclick = () => { wireRegion = r; renderWire(); };
+    fz.appendChild(b);
+  });
+  if (wireQuery){
+    const pill = document.createElement('span');
+    pill.className = 'wire-qpill';
+    pill.innerHTML = '<span>“'+esc(wireQuery)+'”</span>';
+    const x = document.createElement('button'); x.textContent = '×'; x.title = 'Clear search';
+    x.onclick = () => { wireQuery=''; if(!filterKw) renderWire(); else { filterKw=''; renderClips(); renderHeadlines(); renderWire(); } };
+    pill.appendChild(x); fz.appendChild(pill);
+  }
+  const box = $('wire-list');
+  if (!wireLoaded){ box.innerHTML = '<div class="status">Pulling the latest headlines…</div>'; return; }
+  const list = wireFiltered();
+  if (!list.length){ box.innerHTML = '<div class="status">No wire stories'+(wireQuery?' match “'+esc(wireQuery)+'”':'')+(wireRegion!=='All'?' in '+esc(wireRegion):'')+' right now.</div>'; return; }
+  box.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  list.forEach(x => {
+    const a = document.createElement('a');
+    a.className = 'wire-item' + (freshLinks.indexOf(x.link)>=0 ? ' fresh' : '');
+    a.href = x.link; a.target = '_blank'; a.rel = 'noopener';
+    a.innerHTML = '<div class="wire-time">'+esc(relTime(x.pub))+'<br>'+esc(fmtDate(x.pub))+'</div>' +
+      '<div><span class="wire-src" style="background:hsl('+srcHue(x.source)+',65%,62%)">'+esc(x.source)+'</span>' +
+      '<div class="wire-title">'+esc(x.title)+'</div>' +
+      (x.desc ? '<div class="wire-desc">'+esc(x.desc)+'</div>' : '') + '</div>';
+    frag.appendChild(a);
+  });
+  box.appendChild(frag);
+}
+function startTicker(){
+  const tick = $('tick-text');
+  const top = wireItems.slice(0, 8);
+  if (!top.length){ tick.textContent = 'The wire is quiet — try Refresh.'; return; }
+  if (tickTimer) clearInterval(tickTimer);
+  const show = () => {
+    const x = top[tickIdx % top.length];
+    tick.classList.add('fade');
+    setTimeout(() => {
+      tick.textContent = x.source+': '+x.title;
+      tick.classList.remove('fade');
+      $('wire-ticker').onclick = () => window.open(x.link, '_blank', 'noopener');
+    }, 350);
+    tickIdx++;
+  };
+  show();
+  tickTimer = setInterval(show, 8000);
+}
+function initWire(){
+  $('wire-refresh').onclick = () => { wirePaused = false; $('wire-pause').textContent = 'Pause'; loadWire(); };
+  $('wire-pause').onclick = () => {
+    wirePaused = !wirePaused;
+    $('wire-pause').textContent = wirePaused ? 'Resume' : 'Pause';
+    tickUpdated();
+  };
+  loadWire();
+  setInterval(() => { if (!wirePaused && !document.hidden) loadWire(); }, 5*60*1000);
+}
+/* navigator hook: search the wire ("the navigator can see the stream") */
+function wireSearch(q){
+  wireQuery = (q||'').trim();
+  renderWire();
+  document.getElementById('wire').scrollIntoView({behavior:'smooth', block:'start'});
+  const list = wireFiltered();
+  if (!list.length){
+    navSay('bot','Nothing on the wire'+(wireQuery?' for <b>'+esc(wireQuery)+'</b>':'')+' right now. Try another keyword, or say <b>wire</b> for the full stream.');
+    return;
+  }
+  const top = list.slice(0,5).map(x=>'\u2022 <b>'+esc(x.source)+':</b> '+esc(x.title)+' <i>('+esc(relTime(x.pub))+')</i>').join('<br>');
+  navSay('bot','<b>'+list.length+' wire stor'+(list.length===1?'y':'ies')+'</b>'+(wireQuery?' for \u201c'+esc(wireQuery)+'\u201d':'')+' — newest first:<br>'+top+'<br><i>Scrolled you to the full stream below.</i>');
 }
 
 /* ---------- clock & init ---------- */
@@ -501,6 +689,7 @@ function tickClock(){
     $('clock-time').textContent = new Intl.DateTimeFormat('en-CA',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Vancouver'}).format(now);
     $('clock-date').textContent = new Intl.DateTimeFormat('en-CA',{weekday:'long',month:'long',day:'numeric',timeZone:'America/Vancouver'}).format(now);
   }catch(e){}
+  try{ if (wireLoaded) tickUpdated(); }catch(e){}
 }
 async function init(){
   try{
@@ -513,6 +702,7 @@ async function init(){
   if (def.type==='link') openLink(def); else playChannel(def);
   loadHeadlines();
   initNavigator();
+  initWire();
   tickClock(); setInterval(tickClock, 15000);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
