@@ -538,7 +538,7 @@ function handleCommand(raw){
   if (/^(help|\?|what can you do|commands)$/.test(l)) return navHelp();
   if (/^(list|channels|show channels|all channels)$/.test(l)) return listChannels();
   if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); wireQuery=''; renderWire(); return navSay('bot','Filter cleared — showing everything again.'); }
-  if (m = l.match(/^(summari(s|z)e|summary|brief( me|ing)?|catch me up|what'?s (happening|new|going on)|bring me up to (date|speed)|tl;?dr)([\s\S]*)$/)) return summarizeNews(m[4]||'');
+  if (m = l.match(/^(?:summari[sz]e|summary|brief(?: me|ing)?|catch me up|what'?s (?:happening|new|going on)|bring me up to (?:date|speed)|tl;?dr)([\s\S]*)$/)) return summarizeNews(m[1]||'');
   if (m = l.match(/^(wire|breaking|live wire|latest news|latest headlines)(?:\s*:\s*([\s\S]*)|\s+([\s\S]*))?$/)) return wireSearch(m[2]||m[3]||'');
   if (m = l.match(/^(play|watch|switch(?:\s+to)?|open|tune(?:\s+to)?|put\s+on)\s+(.+)$/)) return channelAction(m[2]);
   if (m = l.match(/^(latest|newest)(?:\s+from|\s+clip\s+from)?\s+(.+)$/)) return latestClip(m[2]);
