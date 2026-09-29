@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>News Desk — Personal News Dashboard</title>
+<style>
+:root{
+  --bg:#0b0e14; --panel:#12161f; --panel2:#171d29; --border:#232c3d;
+  --text:#e9edf3; --muted:#8b94a7; --accent:#e63946; --accent2:#4cc9f0;
+  --chip:#1e2534; --radius:10px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.45; min-height:100vh;}
+header{display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,#141926,#0b0e14); position:sticky; top:0; z-index:50;}
+.brand{display:flex; align-items:center; gap:12px;}
+.live-dot{width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.brand h1{font-size:20px; letter-spacing:2px; font-weight:800;}
+.brand h1 span{color:var(--accent);}
+.clock{text-align:right; color:var(--muted); font-size:13px;}
+.clock strong{color:var(--text); font-size:16px; font-variant-numeric:tabular-nums;}
+main{display:grid; grid-template-columns:minmax(0,1fr) 390px; gap:18px; padding:18px 22px 40px; max-width:1720px; margin:0 auto;}
+.player-wrap{position:relative; width:100%; aspect-ratio:16/9; background:#000; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+.player-wrap iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
+.now-playing{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:12px 0 4px; padding:10px 14px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);}
+.now-playing .np-name{font-weight:700; font-size:16px;}
+.now-playing .np-note{color:var(--muted); font-size:12.5px;}
+.now-playing .np-badge{background:var(--accent); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; letter-spacing:1px; white-space:nowrap;}
+.chan-section{margin-top:14px;}
+.chan-region{font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border);}
+.chan-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:8px;}
+.chan-btn{display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--chip); border:1px solid var(--border); border-radius:8px; color:var(--text); cursor:pointer; font-size:13.5px; font-weight:600; text-align:left; transition:all .15s;}
+.chan-btn:hover{border-color:var(--accent); background:#232c42;}
+.chan-btn.active{border-color:var(--accent); background:#2a1a1e; box-shadow:inset 3px 0 0 var(--accent);}
+.chan-btn .ext{margin-left:auto; color:var(--muted); font-size:11px;}
+.sidebar{display:flex; flex-direction:column; gap:18px; min-width:0;}
+.card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+.card-head{padding:11px 14px; font-size:12px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.card-head .tag{font-size:10.5px; background:var(--chip); padding:2px 8px; border-radius:12px; color:var(--accent2); letter-spacing:.5px;}
+/* navigator */
+.nav-log{max-height:270px; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px;}
+.nav-msg{padding:8px 11px; border-radius:9px; font-size:13.5px; max-width:95%;}
+.nav-msg.bot{background:var(--panel2); border:1px solid var(--border); align-self:flex-start;}
+.nav-msg.user{background:#1d2b45; border:1px solid #2c3d5e; align-self:flex-end;}
+.nav-msg.bot b{color:var(--accent2);}
+.nav-chips{display:flex; flex-wrap:wrap; gap:6px; padding:0 14px 10px;}
+.nav-chips button{background:var(--chip); border:1px solid var(--border); color:var(--text); font-size:12px; padding:5px 11px; border-radius:16px; cursor:pointer;}
+.nav-chips button:hover{border-color:var(--accent2); color:var(--accent2);}
+.nav-input{display:flex; border-top:1px solid var(--border);}
+.nav-input input{flex:1; background:#0d1119; border:0; color:var(--text); padding:12px 14px; font-size:14px; outline:none;}
+.nav-input button{background:var(--accent); color:#fff; border:0; padding:0 20px; font-weight:700; cursor:pointer; font-size:14px;}
+.nav-input button:hover{background:#c92f3b;}
+/* clips */
+.clip-list{display:flex; flex-direction:column; max-height:460px; overflow-y:auto;}
+.clip{display:flex; gap:10px; padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer; align-items:center;}
+.clip:hover{background:var(--panel2);}
+.clip img{width:112px; height:63px; object-fit:cover; border-radius:6px; background:#000; flex-shrink:0;}
+.clip .clip-title{font-size:13px; font-weight:600; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+.clip .clip-time{font-size:11.5px; color:var(--muted); margin-top:3px;}
+.filter-banner{display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:#241a10; border-bottom:1px solid #4a3517; font-size:13px; color:#f0b429;}
+.filter-banner button{background:none; border:1px solid #f0b429; color:#f0b429; border-radius:12px; font-size:11px; padding:2px 10px; cursor:pointer;}
+/* headlines */
+.head-tabs{display:flex; border-bottom:1px solid var(--border);}
+.head-tabs button{flex:1; background:none; border:0; color:var(--muted); font-size:12.5px; font-weight:700; padding:10px 4px; cursor:pointer; border-bottom:2px solid transparent;}
+.head-tabs button.active{color:var(--text); border-bottom-color:var(--accent);}
+.head-list{max-height:460px; overflow-y:auto;}
+.head-item{display:block; padding:10px 14px; border-bottom:1px solid var(--border); color:var(--text); text-decoration:none;}
+.head-item:hover{background:var(--panel2);}
+.head-item .head-title{font-size:13.5px; font-weight:600;}
+.head-item .head-meta{font-size:11.5px; color:var(--muted); margin-top:3px;}
+.status{padding:16px 14px; color:var(--muted); font-size:13px; text-align:center;}
+.error{color:#f0717a;}
+footer{padding:18px 22px 30px; color:var(--muted); font-size:12px; text-align:center; border-top:1px solid var(--border);}
+footer a{color:var(--accent2);}
+@media(max-width:1080px){ main{grid-template-columns:1fr;} .sidebar{max-width:760px;} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="live-dot"></div><h1>NEWS<span>DESK</span></h1></div>
+  <div class="clock"><strong id="clock-time">--:--</strong><br><span id="clock-date"></span></div>
+</header>
+<main>
+  <section>
+    <div class="player-wrap"><iframe id="player" title="News player" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" src="about:blank"></iframe></div>
+    <div class="now-playing">
+      <div><div class="np-name" id="np-name">Loading…</div><div class="np-note" id="np-note">Official YouTube embeds only — nothing is recorded or rehosted.</div></div>
+      <div class="np-badge" id="np-badge">LIVE</div>
+    </div>
+    <div class="chan-section" id="channels"></div>
+  </section>
+  <aside class="sidebar">
+    <div class="card">
+      <div class="card-head">AI Navigator <span class="tag">on-device · no cloud</span></div>
+      <div class="nav-log" id="nav-log"></div>
+      <div class="nav-chips" id="nav-chips"></div>
+      <div class="nav-input">
+        <input id="nav-text" type="text" placeholder='Try "play Sky News" or "latest from Bloomberg"…' autocomplete="off">
+        <button id="nav-go">Go</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span id="clips-title">Latest clips</span><span class="tag" id="clips-count"></span></div>
+      <div id="clips-filter"></div>
+      <div class="clip-list" id="clip-list"><div class="status">Loading clips…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Headlines <span class="tag">RSS</span></div>
+      <div class="head-tabs" id="head-tabs"></div>
+      <div id="head-filter"></div>
+      <div class="head-list" id="head-list"><div class="status">Loading headlines…</div></div>
+    </div>
+  </aside>
+</main>
+<footer>Official embeds &amp; outbound links only. Streams play from each outlet's own YouTube channel. Clip/headline feeds load via public CORS relays.</footer>
+<script>
+"use strict";
+/* Built-in channel list (used if channels.json can't be fetched, e.g. opened via file://).
+   channels.json is the source of truth when served over HTTP. */
+const BUILTIN = {"channels":[{"aliases":["al jazeera","aljazeera","aje","al jazeera english"],"channelId":"UCNye-wNBqNL5ZzHSJj3l8Bg","id":"al-jazeera-english","name":"Al Jazeera English","region":"Middle East","site":"https://www.aljazeera.com","type":"youtube"},{"aliases":["dw","dw news","deutsche welle"],"channelId":"UCknLrEdhRCp1aegoMqRaCZg","id":"dw-news","name":"DW News","region":"Europe","site":"https://www.dw.com","type":"youtube"},{"aliases":["france 24","france24"],"channelId":"UCQfwfsi5VrQ8yKZ-UWmAEFg","id":"france-24","name":"France 24 English","region":"Europe","site":"https://www.france24.com","type":"youtube"},{"aliases":["euronews","euro news"],"channelId":"UCSrZ3UV4jOidv8ppoVuvW9Q","id":"euronews","name":"Euronews English","region":"Europe","site":"https://www.euronews.com","type":"youtube"},{"aliases":["sky","sky news"],"channelId":"UCoMdktPbSTixAyNGwb-UYkQ","id":"sky-news","name":"Sky News","region":"United Kingdom","site":"https://news.sky.com","type":"youtube"},{"aliases":["gb news","gbnews"],"channelId":"UC0vn8ISa4LKMunLbzaXLnOQ","id":"gb-news","name":"GB News","region":"United Kingdom","site":"https://www.gbnews.com","type":"youtube"},{"aliases":["abc","abc news","abc us","abc america"],"channelId":"UCBi2mrWuNuyYy4gbM6fU18Q","id":"abc-news-us","name":"ABC News (US)","region":"United States","site":"https://abcnews.go.com","type":"youtube"},{"aliases":["nbc","nbc news","nbc now","nbc news now"],"channelId":"UCeY0bbntWzzVIaj2z3QigXg","id":"nbc-news-now","name":"NBC News NOW","region":"United States","site":"https://www.nbcnews.com","type":"youtube"},{"aliases":["cbs","cbs news","cbs 24/7","cbsn"],"channelId":"UC8p1vwvWtl6T73JiExfWs1g","id":"cbs-news","name":"CBS News 24/7","region":"United States","site":"https://www.cbsnews.com","type":"youtube"},{"aliases":["scripps","scripps news"],"channelId":"UCTln5ss6h6L_xNfMeujfPbg","id":"scripps-news","name":"Scripps News","region":"United States","site":"https://scrippsnews.com","type":"youtube"},{"aliases":["livenow","live now","livenow fox","live now fox","fox live"],"channelId":"UCJg9wBPyKMNA5sRDnvzmkdg","id":"livenow-fox","name":"LiveNOW from Fox","region":"United States","site":"https://www.livenowfox.com","type":"youtube"},{"aliases":["fox weather","weather"],"channelId":"UC1FbPiXx59_ltnFVx7IxWow","id":"fox-weather","name":"Fox Weather","region":"Business & Weather","site":"https://www.foxweather.com","type":"youtube"},{"aliases":["abc australia","abc au","australia","abc news australia"],"channelId":"UCVgO39Bk5sMo66-6o6Spn6Q","id":"abc-news-au","name":"ABC News Australia","region":"Asia Pacific","site":"https://www.abc.net.au/news","type":"youtube"},{"aliases":["bloomberg","bloomberg tv","bloomberg television","markets","business"],"channelId":"UCIALMKvObZNtJ6AmdCLP7Lg","id":"bloomberg","name":"Bloomberg Television","region":"Business & Weather","site":"https://www.bloomberg.com","type":"youtube"},{"aliases":["nhk","nhk world","nhk japan","japan"],"channelId":"UCSPEjw8F2nQDtmUKPFNF7_A","id":"nhk-world","name":"NHK World-Japan","region":"Asia Pacific","site":"https://www3.nhk.or.jp/nhkworld/","type":"youtube"},{"aliases":["trt","trt world"],"channelId":"UC7fWeaHhqgM4Ry-RMpM2YYw","id":"trt-world","name":"TRT World","region":"Middle East","site":"https://www.trtworld.com","type":"youtube"},{"aliases":["wion"],"channelId":"UC_gUM8rL-Lrg6O3adPW9K1g","id":"wion","name":"WION","region":"Asia Pacific","site":"https://www.wionews.com","type":"youtube"},{"aliases":["ctv","ctv news"],"id":"ctv-news","name":"CTV News","region":"Canada","type":"link","url":"https://www.ctvnews.ca"},{"aliases":["cbc","cbc news"],"id":"cbc-news","name":"CBC News","region":"Canada","type":"link","url":"https://www.cbc.ca/news"},{"aliases":["global","global news"],"id":"global-news","name":"Global News","region":"Canada","type":"link","url":"https://globalnews.ca"}],"headlineFeeds":[{"name":"CBC Top Stories","url":"https://www.cbc.ca/webfeed/rss/rss-topstories"},{"name":"BBC World","url":"https://feeds.bbci.co.uk/news/world/rss.xml"},{"name":"Al Jazeera","url":"https://www.aljazeera.com/xml/rss/all.xml"}],"feedProviders":[{"name":"rss2json","kind":"json","url":"https://api.rss2json.com/v1/api.json?rss_url="},{"name":"allorigins","kind":"xml","url":"https://api.allorigins.win/raw?url="},{"name":"codetabs","kind":"xml","url":"https://api.codetabs.com/v1/proxy?quest="}],"regionOrder":["Canada","United States","United Kingdom","Europe","Middle East","Asia Pacific","Business & Weather"]};
+
+let CFG = BUILTIN, channels = [], current = null;
+let clipsCache = {};      // channelId -> [{id,title,link,published,thumb}]
+let clipsLoading = {};    // channelId -> promise
+let headlinesCache = [];  // [{source,title,link,pub,desc}]
+let headlinesLoaded = false;
+let activeFeed = 0, filterKw = '';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+
+function relTime(d){
+  const s = Math.max(1, Math.floor((Date.now()-d.getTime())/1000));
+  if (s < 60) return s+'s ago';
+  const m = Math.floor(s/60); if (m < 60) return m+'m ago';
+  const h = Math.floor(m/60); if (h < 24) return h+'h ago';
+  const dd = Math.floor(h/24); return dd+'d ago';
+}
+function fmtDate(d){ try { return d.toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); } catch(e){ return ''; } }
+
+/* ---------- feed fetching: rss2json (JSON) -> AllOrigins (XML) -> CodeTabs (XML) ----------
+   Note: corsproxy.io now requires a paid API key, so it was dropped from the chain. */
+function parseR2JDate(s){
+  if (!s) return new Date();
+  let d = new Date(String(s).trim().replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) d = new Date(s);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+function ytIdFromLink(link){
+  const m = String(link||'').match(/[?&]v=([A-Za-z0-9_-]{6,})|\/shorts\/([A-Za-z0-9_-]{6,})|youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  return m ? (m[1]||m[2]||m[3]||'') : '';
+}
+function parseRss2JsonTube(d){
+  if (!d || d.status!=='ok' || !Array.isArray(d.items)) throw new Error('bad feed data');
+  return d.items.slice(0,15).map(it => ({
+    id: ytIdFromLink(it.link),
+    title: it.title || 'Untitled',
+    link: it.link || '',
+    published: parseR2JDate(it.pubDate),
+    thumb: it.thumbnail || ''
+  })).filter(x => x.id);
+}
+function stripHtml(s){ return String(s||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(); }
+function parseRss2JsonNews(d){
+  if (!d || d.status!=='ok' || !Array.isArray(d.items)) throw new Error('bad feed data');
+  return d.items.slice(0,25).map(it => ({
+    title: stripHtml(it.title) || 'Untitled',
+    link: it.link || '',
+    pub: parseR2JDate(it.pubDate),
+    desc: stripHtml(it.description || it.content).slice(0,220),
+    thumb: it.thumbnail || ((it.enclosure && it.enclosure.link) || '')
+  }));
+}
+async function fetchFeed(url, kind){
+  const errs = [];
+  for (const p of CFG.feedProviders){
+    try{
+      const r = await fetch(p.url + encodeURIComponent(url));
+      if (!r.ok) throw new Error(p.name+' HTTP '+r.status);
+      if (p.kind==='json'){
+        const d = await r.json();
+        return kind==='tube' ? parseRss2JsonTube(d) : parseRss2JsonNews(d);
+      }
+      const t = await r.text();
+      if (!t || t.length < 200) throw new Error(p.name+' empty response');
+      return kind==='tube' ? parseYouTubeAtom(t) : parseRSS(t);
+    }catch(e){ errs.push(e.message); }
+  }
+  throw new Error(errs.join(' / '));
+}
+function childByLocal(parent, local){
+  const kids = parent.childNodes;
+  for (let i=0;i<kids.length;i++){ if (kids[i].nodeType===1 && kids[i].localName===local) return kids[i]; }
+  return null;
+}
+function textOf(parent, local){
+  const c = childByLocal(parent, local);
+  return c ? c.textContent.trim() : '';
+}
+function thumbOf(item){
+  const kids = item.childNodes;
+  for (let i=0;i<kids.length;i++){
+    const k = kids[i];
+    if (k.nodeType!==1) continue;
+    if (k.localName==='thumbnail' && k.getAttribute('url')) return k.getAttribute('url');
+    if (k.localName==='content' && k.getAttribute('url') && (k.getAttribute('medium')==='image'||/\.(jpg|jpeg|png|webp)/i.test(k.getAttribute('url')))) return k.getAttribute('url');
+    if (k.localName==='enclosure' && k.getAttribute('url') && /^image\//i.test(k.getAttribute('type')||'')) return k.getAttribute('url');
+  }
+  return '';
+}
+function parseYouTubeAtom(xml){
+  const doc = new DOMParser().parseFromString(xml,'text/xml');
+  if (doc.querySelector('parsererror')) throw new Error('bad XML');
+  const out = [];
+  const entries = doc.getElementsByTagName('entry');
+  for (let i=0;i<entries.length && out.length<15;i++){
+    const e = entries[i];
+    const vid = textOf(e,'videoId');
+    const linkEl = childByLocal(e,'link');
+    out.push({
+      id: vid || (linkEl? (linkEl.getAttribute('href')||'').split('v=')[1] : ''),
+      title: textOf(e,'title') || 'Untitled',
+      link: linkEl ? (linkEl.getAttribute('href')||'') : '',
+      published: new Date(textOf(e,'published')||textOf(e,'updated')||Date.now()),
+      thumb: thumbOf(e)
+    });
+  }
+  return out;
+}
+function parseRSS(xml){
+  const doc = new DOMParser().parseFromString(xml,'text/xml');
+  if (doc.querySelector('parsererror')) throw new Error('bad XML');
+  const out = [];
+  const items = doc.getElementsByTagName('item');
+  for (let i=0;i<items.length && out.length<25;i++){
+    const it = items[i];
+    out.push({
+      title: textOf(it,'title') || 'Untitled',
+      link: textOf(it,'link'),
+      pub: new Date(textOf(it,'pubDate')||textOf(it,'date')||Date.now()),
+      desc: textOf(it,'description').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,220),
+      thumb: thumbOf(it)
+    });
+  }
+  return out;
+}
+
+/* ---------- player & channel chooser ---------- */
+function liveEmbed(ch){ return 'https://www.youtube.com/embed/live_stream?channel='+ch.channelId+'&autoplay=1&rel=0'; }
+function clipEmbed(vid){ return 'https://www.youtube.com/embed/'+vid+'?autoplay=1&rel=0'; }
+
+function playChannel(ch, videoId){
+  current = ch;
+  document.querySelectorAll('.chan-btn').forEach(b => b.classList.toggle('active', b.dataset.id===ch.id && !videoId));
+  if (videoId){
+    $('player').src = clipEmbed(videoId);
+    $('np-name').textContent = ch.name;
+    $('np-note').textContent = 'Playing a recent clip from '+ch.name+' (official upload).';
+    $('np-badge').textContent = 'CLIP';
+  } else {
+    $('player').src = liveEmbed(ch);
+    $('np-name').textContent = ch.name;
+    $('np-note').textContent = ch.type==='youtube'
+      ? 'Official channel live embed — if nothing is streaming live right now, YouTube shows the channel\u2019s latest video.'
+      : 'Opens the outlet\u2019s official site in a new tab.';
+    $('np-badge').textContent = 'LIVE';
+  }
+  loadClips(ch);
+}
+function openLink(ch){
+  window.open(ch.url,'_blank','noopener');
+  navSay('bot','Opening <b>'+esc(ch.name)+'</b> on its official site in a new tab — no YouTube live channel is available for this outlet, so it\u2019s a link-out.');
+  document.querySelectorAll('.chan-btn').forEach(b => b.classList.toggle('active', b.dataset.id===ch.id));
+  $('np-name').textContent = ch.name;
+  $('np-note').textContent = 'Link-out channel — opened '+esc(ch.url)+' in a new tab.';
+  $('np-badge').textContent = 'LINK';
+}
+
+function renderChannels(){
+  const host = $('channels'); host.innerHTML = '';
+  const order = CFG.regionOrder || [];
+  const groups = {};
+  channels.forEach(ch => { (groups[ch.region] = groups[ch.region]||[]).push(ch); });
+  order.concat(Object.keys(groups).filter(r=>order.indexOf(r)<0)).forEach(region => {
+    if (!groups[region]) return;
+    const h = document.createElement('div');
+    h.className = 'chan-region'; h.textContent = region;
+    host.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'chan-grid';
+    groups[region].forEach(ch => {
+      const b = document.createElement('button');
+      b.className = 'chan-btn'; b.dataset.id = ch.id;
+      b.innerHTML = '<span>'+esc(ch.name)+'</span>'+(ch.type==='link'?'<span class="ext">\u2197</span>':'');
+      b.title = ch.type==='link' ? 'Open official site in a new tab' : 'Watch live in the player';
+      b.onclick = () => { ch.type==='link' ? openLink(ch) : playChannel(ch); };
+      grid.appendChild(b);
+    });
+    host.appendChild(grid);
+  });
+}
+
+/* ---------- latest clips (YouTube channel RSS) ---------- */
+function loadClips(ch){
+  if (ch.type!=='youtube') { $('clip-list').innerHTML = '<div class="status">Link-out channel — clips aren\u2019t available.</div>'; $('clips-title').textContent = 'Latest clips'; $('clips-count').textContent=''; return; }
+  $('clips-title').textContent = 'Latest clips — '+ch.name;
+  const id = ch.channelId;
+  if (clipsCache[id]){ renderClips(); return; }
+  $('clip-list').innerHTML = '<div class="status">Loading clips…</div>';
+  if (!clipsLoading[id]){
+    clipsLoading[id] = fetchFeed('https://www.youtube.com/feeds/videos.xml?channel_id='+id, 'tube')
+      .then(list => { clipsCache[id] = list; })
+      .catch(err => { clipsCache[id] = {error:String(err.message||err)}; })
+      .finally(() => { delete clipsLoading[id]; });
+  }
+  clipsLoading[id].then(()=>{ if (current===ch || !current) renderClips(); });
+}
+function matchKw(text, kw){
+  return norm(text).indexOf(norm(kw)) >= 0;
+}
+function renderClips(){
+  const box = $('clip-list'), fz = $('clips-filter');
+  if (!current || current.type!=='youtube'){ return; }
+  const data = clipsCache[current.channelId];
+  fz.innerHTML = filterKw
+    ? '<div class="filter-banner"><span>Filtering clips: \u201c'+esc(filterKw)+'\u201d</span><button id="cf-clear">Clear</button></div>' : '';
+  const clr = $('cf-clear'); if (clr) clr.onclick = clearFilter;
+  if (!data){ box.innerHTML = '<div class="status">Loading clips…</div>'; return; }
+  if (data.error){ box.innerHTML = '<div class="status error">Couldn\u2019t load clips ('+esc(data.error)+').</div>'; $('clips-count').textContent=''; return; }
+  let list = data;
+  if (filterKw) list = list.filter(c => matchKw(c.title, filterKw));
+  $('clips-count').textContent = list.length ? list.length+' shown' : '';
+  if (!list.length){ box.innerHTML = '<div class="status">No clips match \u201c'+esc(filterKw)+'\u201d.</div>'; return; }
+  box.innerHTML = '';
+  list.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'clip';
+    d.innerHTML = (c.thumb?'<img src="'+esc(c.thumb)+'" alt="" loading="lazy">':'') +
+      '<div><div class="clip-title">'+esc(c.title)+'</div><div class="clip-time">'+esc(relTime(c.published))+' · '+esc(fmtDate(c.published))+'</div></div>';
+    d.onclick = () => c.id && playChannel(current, c.id);
+    box.appendChild(d);
+  });
+}
+
+/* ---------- headlines (CBC / BBC / Al Jazeera RSS) ---------- */
+function loadHeadlines(){
+  const tabs = $('head-tabs'); tabs.innerHTML = '';
+  CFG.headlineFeeds.forEach((f,i) => {
+    const b = document.createElement('button');
+    b.textContent = f.name; b.dataset.i = i;
+    if (i===0) b.classList.add('active');
+    b.onclick = () => { activeFeed = i; tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',+x.dataset.i===i)); renderHeadlines(); };
+    tabs.appendChild(b);
+  });
+  $('head-list').innerHTML = '<div class="status">Loading headlines…</div>';
+  Promise.all(CFG.headlineFeeds.map(f =>
+    fetchFeed(f.url, 'news').then(items => items.map(it => Object.assign({source:f.name}, it)))
+      .catch(err => [{source:f.name, error:String(err.message||err)}])
+  )).then(groups => {
+    headlinesCache = [].concat.apply([], groups);
+    headlinesLoaded = true;
+    renderHeadlines();
+  });
+}
+function renderHeadlines(){
+  const box = $('head-list'), fz = $('head-filter');
+  fz.innerHTML = filterKw
+    ? '<div class="filter-banner"><span>Filtering headlines: \u201c'+esc(filterKw)+'\u201d</span><button id="hf-clear">Clear</button></div>' : '';
+  const clr = $('hf-clear'); if (clr) clr.onclick = clearFilter;
+  if (!headlinesLoaded){ box.innerHTML = '<div class="status">Loading headlines…</div>'; return; }
+  const feed = CFG.headlineFeeds[activeFeed];
+  let list = headlinesCache.filter(h => h.source===feed.name);
+  const err = list.length===1 && list[0].error ? list[0] : null;
+  if (err){ box.innerHTML = '<div class="status error">Couldn\u2019t load '+esc(feed.name)+' ('+esc(err.error)+').</div>'; return; }
+  if (filterKw) list = list.filter(h => matchKw(h.title+' '+(h.desc||''), filterKw));
+  if (!list.length){ box.innerHTML = '<div class="status">No headlines match \u201c'+esc(filterKw)+'\u201d in '+esc(feed.name)+'.</div>'; return; }
+  box.innerHTML = '';
+  list.forEach(h => {
+    const a = document.createElement('a');
+    a.className = 'head-item'; a.href = h.link; a.target = '_blank'; a.rel = 'noopener';
+    a.innerHTML = '<div class="head-title">'+esc(h.title)+'</div><div class="head-meta">'+esc(feed.name)+' · '+esc(relTime(h.pub))+'</div>';
+    box.appendChild(a);
+  });
+}
+function clearFilter(){
+  filterKw = '';
+  renderClips(); renderHeadlines();
+}
+function applyFilter(kw){
+  filterKw = kw.trim();
+  renderClips(); renderHeadlines();
+  const clipN = current && current.type==='youtube' && Array.isArray(clipsCache[current.channelId])
+    ? clipsCache[current.channelId].filter(c=>matchKw(c.title,filterKw)).length : 0;
+  const headN = headlinesLoaded ? headlinesCache.filter(h=>!h.error && matchKw(h.title+' '+(h.desc||''),filterKw)).length : 0;
+  navSay('bot','Filtered clips and headlines for <b>'+esc(filterKw)+'</b> — '+clipN+' clip'+(clipN===1?'':'s')+' and '+headN+' headline'+(headN===1?'':'s')+' match. <i>Say \u201cclear\u201d to reset.</i>');
+}
+
+/* ---------- local AI navigator (no external calls — acts only on this page) ---------- */
+function navSay(kind, html){
+  const log = $('nav-log');
+  const d = document.createElement('div');
+  d.className = 'nav-msg '+kind;
+  d.innerHTML = html;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+function findChannels(q){
+  const nq = norm(q);
+  if (!nq) return [];
+  return channels.map(ch => {
+    const names = [ch.name].concat(ch.aliases||[]).map(norm);
+    let score = 0;
+    for (const n of names){
+      if (!n) continue;
+      if (n===nq) score = Math.max(score, 100);
+      else if (n.indexOf(nq)===0 || nq.indexOf(n)===0) score = Math.max(score, 70+Math.min(n.length,nq.length));
+      else if (n.indexOf(nq)>=0 || nq.indexOf(n)>=0) score = Math.max(score, 40);
+    }
+    return {ch, score};
+  }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+}
+function channelAction(q){
+  const hits = findChannels(q);
+  if (!hits.length){
+    navSay('bot','I couldn\u2019t find an outlet matching \u201c'+esc(q)+'\u201d. Say <b>list</b> to see every channel.');
+    return;
+  }
+  const top = hits.filter(h=>h.score===hits[0].score);
+  if (top.length>1){
+    navSay('bot','Did you mean '+top.slice(0,4).map(h=>'<b>'+esc(h.ch.name)+'</b>').join(', ')+'? Be a little more specific.');
+    return;
+  }
+  const ch = top[0].ch;
+  if (ch.type==='link'){ openLink(ch); }
+  else { playChannel(ch); navSay('bot','Now playing <b>'+esc(ch.name)+'</b> in the main player.'); }
+}
+async function latestClip(q){
+  const hits = findChannels(q);
+  if (!hits.length){ navSay('bot','I couldn\u2019t find an outlet matching \u201c'+esc(q)+'\u201d.'); return; }
+  const ch = hits[0].ch;
+  if (ch.type==='link'){ navSay('bot','<b>'+esc(ch.name)+'</b> is a link-out channel, so it has no clips here — I opened its site instead.'); openLink(ch); return; }
+  navSay('bot','Fetching the newest clip from <b>'+esc(ch.name)+'</b>…');
+  if (!clipsCache[ch.channelId] && !clipsLoading[ch.channelId]) loadClips(ch);
+  if (clipsLoading[ch.channelId]){ try{ await clipsLoading[ch.channelId]; }catch(e){} }
+  const data = clipsCache[ch.channelId];
+  if (!data || data.error || !data.length){ navSay('bot','Sorry — I couldn\u2019t load clips for <b>'+esc(ch.name)+'</b> right now.'); return; }
+  const c = data[0];
+  playChannel(ch, c.id);
+  navSay('bot','Playing the latest from <b>'+esc(ch.name)+'</b>: \u201c'+esc(c.title)+'\u201d ('+esc(relTime(c.published))+').');
+}
+function listChannels(){
+  const names = channels.map(c=>esc(c.name)).join(' · ');
+  navSay('bot','<b>'+channels.length+' channels:</b><br>'+names);
+}
+function navHelp(){
+  navSay('bot','Here\u2019s what I can do, all right here on this page:<br>'+
+    '· <b>play &lt;outlet&gt;</b> — e.g. \u201cplay Sky News\u201d, \u201cwatch DW\u201d<br>'+
+    '· <b>latest from &lt;outlet&gt;</b> — play its newest clip, e.g. \u201clatest from Bloomberg\u201d<br>'+
+    '· <b>filter &lt;keyword&gt;</b> — e.g. \u201cfilter Trump\u201d, \u201cfilter markets\u201d, \u201cfilter Canada news\u201d<br>'+
+    '· <b>clear</b> — remove the filter<br>'+
+    '· <b>list</b> — show every channel<br>'+
+    '· Just type an outlet name on its own to play it.');
+}
+function handleCommand(raw){
+  const t = raw.trim();
+  if (!t) return;
+  navSay('user', esc(t));
+  const l = t.toLowerCase();
+  let m;
+  if (/^(help|\?|what can you do|commands)$/.test(l)) return navHelp();
+  if (/^(list|channels|show channels|all channels)$/.test(l)) return listChannels();
+  if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); return navSay('bot','Filter cleared — showing everything again.'); }
+  if (m = l.match(/^(play|watch|switch(?:\s+to)?|open|tune(?:\s+to)?|put\s+on)\s+(.+)$/)) return channelAction(m[2]);
+  if (m = l.match(/^(latest|newest)(?:\s+from|\s+clip\s+from)?\s+(.+)$/)) return latestClip(m[2]);
+  if (m = l.match(/^(filter|search|find|show\s+me)\s+(.+)$/)) return applyFilter(m[2]);
+  const hits = findChannels(t);
+  if (hits.length && hits[0].score >= 40) return channelAction(t);
+  return applyFilter(t);
+}
+function initNavigator(){
+  const chips = ['Play Sky News','Latest from Bloomberg','Filter: Trump','Filter: markets','Filter: Canada news','List channels'];
+  const host = $('nav-chips'); host.innerHTML = '';
+  chips.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c;
+    b.onclick = () => handleCommand(c.replace(/^Filter:\s*/,'filter '));
+    host.appendChild(b);
+  });
+  const go = () => { const v = $('nav-text').value; $('nav-text').value=''; handleCommand(v); $('nav-text').focus(); };
+  $('nav-go').onclick = go;
+  $('nav-text').addEventListener('keydown', e => { if (e.key==='Enter') go(); });
+  navSay('bot','I\u2019m your on-page navigator — no cloud, no tracking. Ask me to <b>play</b> an outlet, play its <b>latest</b> clip, <b>filter</b> clips &amp; headlines, or say <b>help</b>.');
+}
+
+/* ---------- clock & init ---------- */
+function tickClock(){
+  try{
+    const now = new Date();
+    $('clock-time').textContent = new Intl.DateTimeFormat('en-CA',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Vancouver'}).format(now);
+    $('clock-date').textContent = new Intl.DateTimeFormat('en-CA',{weekday:'long',month:'long',day:'numeric',timeZone:'America/Vancouver'}).format(now);
+  }catch(e){}
+}
+async function init(){
+  try{
+    const r = await fetch('channels.json',{cache:'no-store'});
+    if (r.ok){ const j = await r.json(); if (j && j.channels && j.channels.length) CFG = j; }
+  }catch(e){ /* fall back to BUILTIN for file:// use */ }
+  channels = CFG.channels;
+  renderChannels();
+  const def = channels.find(c=>c.id==='al-jazeera-english') || channels[0];
+  if (def.type==='link') openLink(def); else playChannel(def);
+  loadHeadlines();
+  initNavigator();
+  tickClock(); setInterval(tickClock, 15000);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+</script>
+</body>
+</html>
