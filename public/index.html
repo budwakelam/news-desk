@@ -313,8 +313,8 @@ function parseRSS(xml){
 }
 
 /* ---------- player & channel chooser ---------- */
-function liveEmbed(ch){ return 'https://www.youtube.com/embed/live_stream?channel='+ch.channelId+'&autoplay=1&rel=0'; }
-function clipEmbed(vid){ return 'https://www.youtube.com/embed/'+vid+'?autoplay=1&rel=0'; }
+function liveEmbed(ch){ return 'https://www.youtube.com/embed/live_stream?channel='+ch.channelId+'&autoplay=1&rel=0&enablejsapi=1'; }
+function clipEmbed(vid){ return 'https://www.youtube.com/embed/'+vid+'?autoplay=1&rel=0&enablejsapi=1'; }
 
 function playChannel(ch, videoId){
   current = ch;
@@ -521,6 +521,8 @@ function listChannels(){
 function navHelp(){
   navSay('bot','Here\u2019s what I can do, all right here on this page:<br>'+
     '· <b>play &lt;outlet&gt;</b> — e.g. \u201cplay Sky News\u201d, \u201cwatch DW\u201d<br>'+
+    '· <b>pause</b> / <b>play</b> — pause or resume the video, e.g. \u201cpause the video\u201d<br>'+
+    '· <b>maximize</b> / <b>minimize</b> — fullscreen the player or shrink it back<br>'+
     '· <b>latest from &lt;outlet&gt;</b> — play its newest clip, e.g. \u201clatest from Bloomberg\u201d<br>'+
     '· <b>filter &lt;keyword&gt;</b> — e.g. \u201cfilter Trump\u201d, \u201cfilter markets\u201d, \u201cfilter Canada news\u201d<br>'+
     '· <b>wire</b> / <b>breaking</b> / <b>wire: &lt;keyword&gt;</b> — search the live text-news wire, e.g. \u201cwire markets\u201d<br>'+
@@ -540,6 +542,10 @@ function handleCommand(raw){
   if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); wireQuery=''; renderWire(); return navSay('bot','Filter cleared — showing everything again.'); }
   if (m = l.match(/^(?:summari[sz]e|summary|brief(?: me|ing)?|catch me up|what'?s (?:happening|new|going on)|bring me up to (?:date|speed)|tl;?dr)([\s\S]*)$/)) return summarizeNews(m[1]||'');
   if (m = l.match(/^(wire|breaking|live wire|latest news|latest headlines)(?:\s*:\s*([\s\S]*)|\s+([\s\S]*))?$/)) return wireSearch(m[2]||m[3]||'');
+  if (/^(pause|hold on|pause (?:the )?(?:video|player|it))$/.test(l)) return playerPause();
+  if (/^(play|resume|continue|unpause|play (?:the )?(?:video|player|it)|resume (?:the )?(?:video|player))$/.test(l)) return playerPlay();
+  if (/^(maximi[sz]e|max|fullscreen|full[-\s]?screen|expand|theater|go big)(?: (?:the )?(?:video|player|it))?$/.test(l)) return playerMaximize();
+  if (/^(minimi[sz]e|restore|shrink|zoom out|exit (?:full[-\s]?screen|theater))(?: (?:the )?(?:video|player|it))?$/.test(l)) return playerMinimize();
   if (m = l.match(/^(play|watch|switch(?:\s+to)?|open|tune(?:\s+to)?|put\s+on)\s+(.+)$/)) return channelAction(m[2]);
   if (m = l.match(/^(latest|newest)(?:\s+from|\s+clip\s+from)?\s+(.+)$/)) return latestClip(m[2]);
   if (m = l.match(/^(filter|search|find|show\s+me)\s+(.+)$/)) return applyFilter(m[2]);
@@ -785,6 +791,37 @@ function initFS(){
   document.addEventListener('fullscreenchange', () => {
     $('fs-btn').innerHTML = document.fullscreenElement ? '&#x2715;' : '&#x26F6;';
   });
+}
+/* navigator transport controls: pause / play / maximize the player */
+function ytCmd(func){
+  try{
+    const f = $('player');
+    if (!f || !f.contentWindow) return false;
+    f.contentWindow.postMessage(JSON.stringify({event:'command', func:func, args:''}), '*');
+    return true;
+  }catch(e){ return false; }
+}
+function playerPause(){
+  ytCmd('pauseVideo');
+  navSay('bot','Paused the player. Say <b>play</b> to resume.');
+}
+function playerPlay(){
+  ytCmd('playVideo');
+  navSay('bot','Playing — say <b>pause</b> any time to hold it.');
+}
+function playerMaximize(){
+  const wrap = document.querySelector('.player-wrap');
+  if (document.fullscreenElement || (wrap && wrap.classList.contains('theater')))
+    return navSay('bot','The player is already maximized.');
+  toggleFS();
+  navSay('bot','Player maximized — say <b>minimize</b> to shrink it back.');
+}
+function playerMinimize(){
+  const wrap = document.querySelector('.player-wrap');
+  if (!(document.fullscreenElement || (wrap && wrap.classList.contains('theater'))))
+    return navSay('bot','The player isn\u2019t maximized right now.');
+  toggleFS();
+  navSay('bot','Player restored to normal size.');
 }
 
 /* ---------- clock & init ---------- */
