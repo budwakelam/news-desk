@@ -118,8 +118,33 @@ footer a{color:var(--accent2);}
 .fs-btn:hover{border-color:var(--accent);}
 .player-wrap:fullscreen{border-radius:0; border:0;}
 .player-wrap:-webkit-full-screen{border-radius:0; border:0;}
-.player-wrap.theater{position:fixed; inset:0; z-index:300; border-radius:0; border:0; aspect-ratio:auto; background:#000;}
+.player-wrap.theater{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; z-index:300; border-radius:0; border:0; aspect-ratio:auto; background:#000;}
 body.theater-open{overflow:hidden;}
+/* mobile chat: floating button opens a full-screen chat window */
+.nav-fab{display:none;}
+.nav-close{display:none;}
+@media(max-width:700px){
+  .nav-card{display:none;}
+  .nav-fab{display:flex; align-items:center; gap:8px; position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:250;
+    background:var(--accent); color:#fff; border:0; border-radius:28px; padding:13px 18px; font-size:15px; font-weight:700;
+    box-shadow:0 6px 20px rgba(0,0,0,.5); cursor:pointer;}
+  .nav-fab svg{width:20px; height:20px;}
+  .nav-fab.unread::after{content:''; position:absolute; top:6px; right:8px; width:10px; height:10px; border-radius:50%; background:var(--accent2); border:2px solid var(--accent);}
+  body.chat-open, body.theater-open{overflow:hidden;}
+  body.chat-open .nav-fab, body.theater-open .nav-fab{display:none;}
+  body.chat-open .nav-card{display:flex; flex-direction:column; position:fixed; left:0; right:0; top:var(--vvt,0px); height:var(--vvh,100dvh); z-index:400; border:0; border-radius:0; background:var(--bg);}
+  body.chat-open .card-head{padding:12px 14px; padding-top:calc(12px + env(safe-area-inset-top)); font-size:13px; background:var(--panel);}
+  .nav-close{display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; margin-left:auto; background:var(--chip); border:1px solid var(--border); color:var(--text); border-radius:50%; font-size:18px; line-height:1; cursor:pointer;}
+  body.chat-open .nav-log{flex:1; min-height:0; max-height:none; padding:14px 12px; gap:10px; overscroll-behavior:contain;}
+  body.chat-open .nav-msg{font-size:15px; line-height:1.5; max-width:88%; padding:10px 13px; border-radius:16px;}
+  body.chat-open .nav-msg.bot{border-bottom-left-radius:5px;}
+  body.chat-open .nav-msg.user{border-bottom-right-radius:5px;}
+  body.chat-open .nav-chips{padding:8px 12px; border-top:1px solid var(--border); background:var(--panel); margin:0;}
+  body.chat-open .nav-chips button{font-size:13px; padding:7px 13px;}
+  body.chat-open .nav-input{gap:8px; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:var(--panel); border-top:0;}
+  body.chat-open .nav-input input{border:1px solid var(--border); border-radius:22px; padding:11px 16px; background:#0d1119;}
+  body.chat-open .nav-input button{border-radius:22px; padding:0 18px; min-height:44px;}
+}
 @media(max-width:700px){.wire-nav{display:none;} .wire-item{grid-template-columns:1fr;} .wire-time{display:none;}}
 @media(max-width:1080px){ main{grid-template-columns:1fr;} .sidebar{max-width:760px;} }
 </style>
@@ -140,8 +165,8 @@ body.theater-open{overflow:hidden;}
     <div class="chan-section" id="channels"></div>
   </section>
   <aside class="sidebar">
-    <div class="card">
-      <div class="card-head">AI Navigator <span class="tag">on-device · no cloud</span></div>
+    <div class="card nav-card" id="nav-card">
+      <div class="card-head">AI Navigator <span class="tag">on-device · no cloud</span><button class="nav-close" id="nav-close" aria-label="Close chat">&#x2715;</button></div>
       <div class="nav-log" id="nav-log"></div>
       <div class="nav-chips" id="nav-chips"></div>
       <div class="nav-input">
@@ -178,6 +203,7 @@ body.theater-open{overflow:hidden;}
     <div class="wire-list" id="wire-list"><div class="status">Pulling the latest headlines from a dozen outlets…</div></div>
   </div>
 </section>
+<button class="nav-fab" id="nav-fab" aria-label="Open AI Navigator chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Navigator</button>
 <footer>Official embeds &amp; outbound links only. Streams play from each outlet's own YouTube channel. Clip/headline feeds load via public CORS relays.</footer>
 <script>
 "use strict";
@@ -469,6 +495,7 @@ function navSay(kind, html){
   d.innerHTML = html;
   log.appendChild(d);
   log.scrollTop = log.scrollHeight;
+  if (kind==='bot' && isMobileUI() && !document.body.classList.contains('chat-open')){ const f = $('nav-fab'); if (f) f.classList.add('unread'); }
 }
 function findChannels(q){
   const nq = norm(q);
@@ -498,7 +525,7 @@ function channelAction(q){
   }
   const ch = top[0].ch;
   if (ch.type==='link'){ openLink(ch); }
-  else { playChannel(ch); navSay('bot','Now playing <b>'+esc(ch.name)+'</b> in the main player.'); }
+  else { playChannel(ch); navSay('bot','Now playing <b>'+esc(ch.name)+'</b> in the main player.'); chatShowResult(); }
 }
 async function latestClip(q){
   const hits = findChannels(q);
@@ -512,6 +539,7 @@ async function latestClip(q){
   if (!data || data.error || !data.length){ navSay('bot','Sorry — I couldn\u2019t load clips for <b>'+esc(ch.name)+'</b> right now.'); return; }
   const c = data[0];
   playChannel(ch, c.id);
+  chatShowResult();
   navSay('bot','Playing the latest from <b>'+esc(ch.name)+'</b>: \u201c'+esc(c.title)+'\u201d ('+esc(relTime(c.published))+').');
 }
 function listChannels(){
@@ -540,7 +568,8 @@ function handleCommand(raw){
   if (/^(help|\?|what can you do|commands)$/.test(l)) return navHelp();
   if (/^(list|channels|show channels|all channels)$/.test(l)) return listChannels();
   if (/^clear(\s+filter)?$/.test(l)){ clearFilter(); wireQuery=''; renderWire(); return navSay('bot','Filter cleared — showing everything again.'); }
-  if (m = l.match(/^(?:summari[sz]e|summary|brief(?: me|ing)?|catch me up|what'?s (?:happening|new|going on)|bring me up to (?:date|speed)|tl;?dr)([\s\S]*)$/)) return summarizeNews(m[1]||'');
+  const lp = l.replace(/[.!?]+$/,'').replace(/^(?:(?:hey|hi|ok|okay|so|um)[,\s]+)?(?:(?:can|could|would|will)\s+you\s+|please\s+|pls\s+|just\s+|quickly\s+|give\s+me\s+(?:a\s+)?(?:quick\s+)?|i\s+(?:want|need|would like)\s+(?:a\s+)?|let'?s\s+(?:get\s+)?(?:a\s+)?)*/,'');
+  if (m = lp.match(/^(?:summari[sz]e|summary|brief(?: me|ing)?|news ?brief(?:ing)?|catch me up|what'?s (?:happening|new|going on)|bring me up to (?:date|speed)|tl;?dr|recap)\b([\s\S]*)$/)) return summarizeNews(m[1]||'');
   if (m = l.match(/^(wire|breaking|live wire|latest news|latest headlines)(?:\s*:\s*([\s\S]*)|\s+([\s\S]*))?$/)) return wireSearch(m[2]||m[3]||'');
   if (/^(pause|hold on|pause (?:the )?(?:video|player|it))$/.test(l)) return playerPause();
   if (/^(play|resume|continue|unpause|play (?:the )?(?:video|player|it)|resume (?:the )?(?:video|player))$/.test(l)) return playerPlay();
@@ -588,10 +617,12 @@ let wirePaused = false, wireUpdatedAt = null, wireKnown = new Set(), tickTimer =
 
 function srcHue(name){ let h=0; for (const c of String(name)) h=(h*31+c.charCodeAt(0))%360; return h; }
 
-function loadWire(){
-  if (wirePaused) return Promise.resolve();
+let wireLoading = null;   // in-flight refresh, so callers await it instead of starting another
+function loadWire(force){
+  if (wirePaused && !force) return Promise.resolve();
+  if (wireLoading) return wireLoading;
   $('wire-updated').textContent = 'Refreshing…';
-  return Promise.all(WIRE_FEEDS.map(f =>
+  wireLoading = Promise.all(WIRE_FEEDS.map(f =>
     fetchFeed(f.url, 'news')
       .then(items => items.map(it => ({source:f.name, region:f.region, title:it.title, link:it.link, pub:it.pub, desc:it.desc})))
       .catch(() => [])
@@ -614,7 +645,8 @@ function loadWire(){
   }).catch(() => {
     if (!wireLoaded) $('wire-list').innerHTML = '<div class="status error">Couldn\u2019t reach the news feeds. Check your connection and hit Refresh.</div>';
     tickUpdated();
-  });
+  }).finally(() => { wireLoading = null; });
+  return wireLoading;
 }
 function tickUpdated(){
   if (!wireUpdatedAt) return;
@@ -725,45 +757,74 @@ function pickTop(list, n){
   }
   return out;
 }
+/* Words that just mean "the news" — never treated as a topic, so "summarize the latest feeds"
+   behaves exactly like a bare "summarize". */
+const SUM_FILLER = new Set(('the,latest,news,on,me,please,pls,past,last,in,of,a,an,for,from,any,all,feed,feeds,headline,headlines,'+
+  'story,stories,wire,live,update,updates,everything,anything,stuff,things,it,up,now,right,current,currently,recent,recently,'+
+  'quick,quickly,brief,briefly,top,just,whats,what,going,happening,new,world,todays,can,you,could,would,give,real,'+
+  'and,with,is,are,there,been,has,have,so,far,day,overview,rundown,roundup,round,general,main,big,major,key,time,thing').split(','));
 function parseSummary(q){
-  let minutes = 60, s = ' '+(q||'')+' ';
-  let m = s.match(/(\d+)\s*(min|mins|minute|minutes|hour|hours|hr|hrs)\b/);
-  if (m){ minutes = parseInt(m[1],10) * (/hour|hr/.test(m[2]) ? 60 : 1); s = s.replace(m[0],' '); }
+  let minutes = 60, explicit = false, s = ' '+norm(q)+' ';
+  const m = s.match(/(\d+)\s*(min|mins|minute|minutes|hour|hours|hr|hrs|h|m)\b/);
+  if (m){ minutes = parseInt(m[1],10) * (/^h/.test(m[2]) ? 60 : 1); s = s.replace(m[0],' '); explicit = true; }
+  else if (/\b(last|past) (an |one )?hour\b/.test(s)){ minutes = 60; s = s.replace(/\bhour\b/,' '); explicit = true; }
   const now = new Date(), midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (/\bthis morning\b/.test(s)){ minutes = Math.max(30, Math.round((now - new Date(midnight.getTime()+6*3600*1000))/60000)); s = s.replace(/this morning/,' '); }
-  else if (/\btoday\b/.test(s)){ minutes = Math.max(30, Math.round((now - midnight)/60000)); s = s.replace(/\btoday/,' '); }
-  if (/\byesterday\b/.test(s)){ minutes = 1440; s = s.replace(/\byesterday/,' '); }
-  minutes = Math.min(minutes, 1440);
-  const topic = norm(s).split(' ').filter(w => w.length>2 && !/^(the|latest|news|on|me|please|past|last|in|of|a|an|for|from|any|all)$/.test(w)).join(' ');
-  return {minutes, topic};
+  if (/\bthis morning\b/.test(s)){ minutes = Math.max(30, Math.round((now - new Date(midnight.getTime()+6*3600*1000))/60000)); s = s.replace(/this morning/,' '); explicit = true; }
+  else if (/\b(today|tonight|this evening|this afternoon)\b/.test(s)){ minutes = Math.max(30, Math.round((now - midnight)/60000)); s = s.replace(/\b(today|tonight|this evening|this afternoon)\b/,' '); explicit = true; }
+  if (/\b(yesterday|24 ?h)\b/.test(s)){ minutes = 1440; s = s.replace(/\b(yesterday|24 ?h)\b/,' '); explicit = true; }
+  minutes = Math.min(Math.max(minutes, 5), 1440);
+  const topic = s.split(' ').filter(w => w.length>2 && !SUM_FILLER.has(w)).join(' ');
+  return {minutes, topic, explicit};
 }
 function winLabel(minutes){
-  if (minutes >= 1440) return 'today';
+  if (minutes >= 1440) return '24 hours';
   if (minutes >= 60){ const h = Math.round(minutes/60); return h+' hour'+(h===1?'':'s'); }
   return minutes+' minutes';
 }
 async function summarizeNews(raw){
-  const {minutes, topic} = parseSummary(raw);
+  const {minutes, topic, explicit} = parseSummary(raw);
   if (!wireLoaded){
     navSay('bot','Pulling the latest feeds together…');
-    try{ await loadWire(); }catch(e){}
+    try{ await loadWire(true); }catch(e){}
   }
-  if (!wireLoaded || !wireItems.length){
-    navSay('bot','The wire hasn\u2019t loaded yet — give it a few seconds, then ask again.');
+  // Pool: the live wire, topped up from the headline tabs if the wire came back thin.
+  let pool = wireItems.slice();
+  if (pool.length < 5 && headlinesLoaded){
+    const seen = new Set(pool.map(x => x.link));
+    headlinesCache.forEach(h => { if (!h.error && h.link && !seen.has(h.link)){ seen.add(h.link); pool.push({source:h.source, title:h.title, link:h.link, pub:h.pub, desc:h.desc}); } });
+    pool.sort((a,b) => b.pub - a.pub);
+  }
+  if (!pool.length){
+    navSay('bot','I couldn’t reach any of the news feeds just now — the relays may be busy. Tap <b>Refresh</b> on the Live Wire and try again in a moment.');
     return;
   }
-  const cutoff = Date.now() - minutes*60000;
-  let recent = wireItems.filter(x => x.pub && x.pub.getTime() >= cutoff);
-  if (topic) recent = recent.filter(x => matchKw(x.title+' '+(x.desc||''), topic));
-  const win = winLabel(minutes) + (topic ? ' on \u201c'+topic+'\u201d' : '');
+  let scoped = pool, note = '', onTopic = '';
+  if (topic){
+    const hit = pool.filter(x => matchKw(x.title+' '+(x.desc||''), topic));
+    if (hit.length){ scoped = hit; onTopic = ' on “'+esc(topic)+'”'; }
+    else note = '<i>Nothing on the wire mentions “'+esc(topic)+'”, so here’s the general briefing.</i><br>';
+  }
+  // Start with the requested window (default: last hour). For a plain "summarize", widen
+  // automatically until there's enough to brief on — never bounce the question back.
+  const inWin = w => scoped.filter(x => x.pub && x.pub.getTime() >= Date.now() - w*60000);
+  let win = minutes, recent = inWin(win);
+  if (!explicit){
+    for (const w of [180, 360, 720, 1440]){
+      if (recent.length >= 6) break;
+      win = w; recent = inWin(win);
+    }
+  }
+  let label = 'last '+winLabel(win);
   if (!recent.length){
-    navSay('bot','Nothing new on the wire in the last '+esc(win)+'. Feeds refresh every few minutes — try \u201csummarize today\u201d for a wider window.');
-    return;
+    // Stale feeds or missing dates: brief on the newest stories available.
+    if (explicit) note += '<i>Nothing in the last '+esc(winLabel(minutes))+', so here are the newest stories.</i><br>';
+    recent = scoped.slice(0, 25);
+    label = 'latest stories';
   }
   const outlets = new Set(recent.map(x => x.source)).size;
   const picks = pickTop(recent, 10);
-  const lines = picks.map(x => '\u2022 <b>'+esc(x.source)+'</b> · '+esc(relTime(x.pub))+' — '+esc(x.title));
-  navSay('bot','<b>News briefing</b> — last '+esc(win)+': <b>'+recent.length+'</b> stor'+(recent.length===1?'y':'ies')+' from <b>'+outlets+'</b> outlet'+(outlets===1?'':'s')+'.<br>'+lines.join('<br>')+
+  const lines = picks.map(x => '• <b>'+esc(x.source)+'</b> · '+esc(relTime(x.pub))+' — '+esc(x.title));
+  navSay('bot', note+'<b>News briefing</b> — '+label+onTopic+': <b>'+recent.length+'</b> stor'+(recent.length===1?'y':'ies')+' from <b>'+outlets+'</b> outlet'+(outlets===1?'':'s')+'.<br>'+lines.join('<br>')+
     (recent.length > picks.length ? '<br><i>…and '+(recent.length-picks.length)+' more on the wire below.</i>' : ''));
 }
 /* player fullscreen (button + landscape attempt + fixed-position fallback) */
@@ -776,6 +837,7 @@ function toggleFS(){
   try{
     if (document.fullscreenElement || wrap.classList.contains('theater')){
       if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
       wrap.classList.remove('theater'); document.body.classList.remove('theater-open');
       $('fs-btn').innerHTML = '&#x26F6;';
     } else if (wrap.requestFullscreen){
@@ -788,9 +850,15 @@ function toggleFS(){
 }
 function initFS(){
   $('fs-btn').onclick = e => { e.stopPropagation(); toggleFS(); };
-  document.addEventListener('fullscreenchange', () => {
-    $('fs-btn').innerHTML = document.fullscreenElement ? '&#x2715;' : '&#x26F6;';
-  });
+  const onFsChange = () => {
+    const wrap = document.querySelector('.player-wrap');
+    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    // leaving native fullscreen (e.g. Android back) also leaves the theater layer
+    if (!on && wrap.classList.contains('theater') && !autoFull){ wrap.classList.remove('theater'); document.body.classList.remove('theater-open'); }
+    $('fs-btn').innerHTML = (on || wrap.classList.contains('theater')) ? '&#x2715;' : '&#x26F6;';
+  };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
 }
 /* navigator transport controls: pause / play / maximize the player */
 function ytCmd(func){
@@ -813,6 +881,7 @@ function playerMaximize(){
   const wrap = document.querySelector('.player-wrap');
   if (document.fullscreenElement || (wrap && wrap.classList.contains('theater')))
     return navSay('bot','The player is already maximized.');
+  closeChat();
   toggleFS();
   navSay('bot','Player maximized — say <b>minimize</b> to shrink it back.');
 }
@@ -822,6 +891,104 @@ function playerMinimize(){
     return navSay('bot','The player isn\u2019t maximized right now.');
   toggleFS();
   navSay('bot','Player restored to normal size.');
+}
+
+/* ---------- mobile chat window ---------- */
+const mqMobile = window.matchMedia('(max-width:700px)');
+function isMobileUI(){ return mqMobile.matches; }
+let chatHist = false;
+function syncViewport(){
+  const vv = window.visualViewport, r = document.documentElement.style;
+  if (!vv){ r.removeProperty('--vvh'); r.removeProperty('--vvt'); return; }
+  r.setProperty('--vvh', vv.height+'px');
+  r.setProperty('--vvt', vv.offsetTop+'px');
+  if (document.body.classList.contains('chat-open')){ const log = $('nav-log'); log.scrollTop = log.scrollHeight; }
+}
+function openChat(){
+  if (!isMobileUI() || document.body.classList.contains('chat-open')) return;
+  document.body.classList.add('chat-open');
+  $('nav-fab').classList.remove('unread');
+  syncViewport();
+  const log = $('nav-log'); log.scrollTop = log.scrollHeight;
+  try{ history.pushState({newsDeskChat:1}, ''); chatHist = true; }catch(e){}  // Android back button closes it
+}
+function closeChat(fromPop){
+  if (!document.body.classList.contains('chat-open')) return;
+  document.body.classList.remove('chat-open');
+  $('nav-text').blur();
+  if (chatHist && !fromPop){ chatHist = false; try{ history.back(); }catch(e){} }
+  chatHist = false;
+}
+function chatShowResult(){ if (isMobileUI()) setTimeout(() => closeChat(), 700); }
+function initChat(){
+  $('nav-fab').onclick = openChat;
+  $('nav-close').onclick = () => closeChat();
+  window.addEventListener('popstate', () => { if (document.body.classList.contains('chat-open')) closeChat(true); });
+  mqMobile.addEventListener ? mqMobile.addEventListener('change', () => { if (!isMobileUI()) closeChat(); }) : 0;
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', syncViewport);
+    window.visualViewport.addEventListener('scroll', syncViewport);
+  }
+}
+
+/* ---------- turn the phone sideways -> fullscreen video ---------- */
+function isPhoneLike(){
+  const coarse = window.matchMedia('(pointer:coarse)').matches;
+  return coarse && Math.min(screen.width, screen.height) <= 900;
+}
+function isLandscape(){
+  // screen.orientation ignores the on-screen keyboard (a resized viewport is not a rotation)
+  if (screen.orientation && screen.orientation.type) return screen.orientation.type.indexOf('landscape') === 0;
+  if (typeof window.orientation === 'number') return Math.abs(window.orientation) === 90;
+  return window.matchMedia('(orientation: landscape)').matches;
+}
+function playerIsFull(){
+  const wrap = document.querySelector('.player-wrap');
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || wrap.classList.contains('theater'));
+}
+let autoFull = false, lastLand = null, orientTimer = null;
+function enterFullAuto(){
+  const wrap = document.querySelector('.player-wrap');
+  closeChat();
+  // Browsers may refuse real fullscreen without a tap; the theater fallback fills the screen either way.
+  wrap.classList.add('theater'); document.body.classList.add('theater-open'); $('fs-btn').innerHTML = '&#x2715;';
+  try{
+    const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+    if (req){ const p = req.call(wrap, {navigationUI:'hide'}); if (p && p.catch) p.catch(()=>{}); }
+  }catch(e){}
+  window.scrollTo(0, 0);
+}
+function exitFull(){
+  const wrap = document.querySelector('.player-wrap');
+  try{
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }catch(e){}
+  wrap.classList.remove('theater'); document.body.classList.remove('theater-open');
+  $('fs-btn').innerHTML = '&#x26F6;';
+}
+function onOrientation(){
+  clearTimeout(orientTimer);
+  orientTimer = setTimeout(() => {
+    if (!isPhoneLike()) return;
+    const land = isLandscape();
+    if (land === lastLand) return;          // only act on a real rotation
+    lastLand = land;
+    const typing = document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if (land){
+      if (!playerIsFull() && !typing && current && current.type === 'youtube'){ enterFullAuto(); autoFull = true; }
+    } else if (autoFull){
+      exitFull(); autoFull = false;
+    }
+  }, 150);
+}
+function initOrientation(){
+  lastLand = isLandscape();
+  if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onOrientation);
+  window.addEventListener('orientationchange', onOrientation);
+  window.addEventListener('resize', onOrientation);
+  // tapping the corner button while auto-fullscreen counts as a manual exit
+  $('fs-btn').addEventListener('click', () => { autoFull = false; });
 }
 
 /* ---------- clock & init ---------- */
@@ -846,6 +1013,8 @@ async function init(){
   initNavigator();
   initWire();
   initFS();
+  initChat();
+  initOrientation();
   tickClock(); setInterval(tickClock, 15000);
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
